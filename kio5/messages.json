@@ -16,7 +16,7 @@
     "patient_id": "PT-99802",
     "data_source": "Synthetic Medical Data KIO5",
     "raw_data": {
-      "demographics": { "age": 45, "gender": "Non-binary" },
+      "demographics": { "age": 45, "gender": "Male" },
       "clinical_notes": "Patient presents with persistent cough; suspected respiratory infection.",
       "labs": [{ "test": "WBC", "result": "8.5" }]
     }
