@@ -1,0 +1,37 @@
+{
+  "header": {
+    "source_kio": "KIO3",
+    "destination_kio": "KIO6",
+    "timestamp": "2026-01-28T20:15:05Z",
+    "message_type": "NLP_EXTRACTION_RESULT",
+    "explanation_keys": {
+      "process_stage": "Entity Extraction",
+      "logic_description": "Unstructured clinical notes parsed into formal JSON entities.",
+      "routing_reason": "Structured data requires validation against medical ontologies (ICD-10/LOINC).",
+      "state_status": "EXTRACTED_UNVERIFIED",
+      "confidence_score": "0.94"
+    }
+  },
+  "payload": {
+    "patient_id": "PT-99802",
+    "extracted_entities": {
+      "symptoms": [
+        "persistent cough",
+        "respiratory congestion"
+      ],
+      "suspected_diagnosis": "Respiratory infection",
+      "vitals_detected": {
+        "WBC": "8.5",
+        "unit": "K/uL"
+      },
+      "temporal_context": "Current"
+    },
+    "ambiguities_flagged": [
+      "Duration of symptoms unknown"
+    ]
+  },
+  "metadata": {
+    "model_version": "BioBERT-v4.2",
+    "privacy_masking": "Applied"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "header": {
+    "source_kio": "KIO9",
+    "destination_kio": "Patient_UI",
+    "timestamp": "2026-01-28T20:15:48Z",
+    "message_type": "FINAL_REPORT_RELEASE",
+    "explanation_keys": {
+      "process_stage": "Compliance Verification",
+      "logic_description": "Automated audit passed; GDPR/HIPAA logs created.",
+      "routing_reason": "Return result to end-user.",
+      "state_status": "FINALIZED",
+      "audit_id": "AUD-2026-X99"
+    }
+  },
+  "payload": {
+    "patient_id": "PT-99802",
+    "report_status": "APPROVED",
+    "display_content": {
+      "format": "PDF/HTML",
+      "secure_link": "https://portal.ai4sweng.eu/reports/PT-99802/doc_signed.pdf",
+      "summary": "Your report regarding respiratory symptoms is ready."
+    },
+    "disclaimer": "This report was AI-assisted and reviewed for compliance."
+  },
+  "metadata": {
+    "digital_signature": "SHA256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encryption_level": "TLS 1.3"
+  }
+}
