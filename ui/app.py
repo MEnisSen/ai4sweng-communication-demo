@@ -304,7 +304,7 @@ async def index():
                         
                         const data = await response.json();
                         console.log('Response data:', data);
-                        result.textContent = '✅ Pipeline Complete!\n\n' + JSON.stringify(data, null, 2);
+                        result.textContent = '✅ Pipeline Complete!\\n\\n' + JSON.stringify(data, null, 2);
                         result.style.display = 'block';
                     } catch (error) {
                         console.error('Error:', error);
