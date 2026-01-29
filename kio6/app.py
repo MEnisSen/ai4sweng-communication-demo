@@ -16,18 +16,21 @@ async def health():
     return {"status": "healthy", "service": "kio6"}
 
 
-async def _do_send_log(message: str):
+async def _do_send_log(message: str, data: dict = None):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post("http://kio_ui:8080/log", json={
+            log_entry = {
                 "service": "KIO6",
                 "message": message
-            })
+            }
+            if data:
+                log_entry["data"] = data
+            await client.post("http://kio_ui:8080/log", json=log_entry)
     except Exception as e:
         print(f"Failed to send log: {e}", flush=True)
 
-async def send_log(message: str):
-    asyncio.create_task(_do_send_log(message))
+async def send_log(message: str, data: dict = None):
+    asyncio.create_task(_do_send_log(message, data))
 
 class LogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -48,14 +51,15 @@ async def process(request: dict):
     Simply passes through whatever JSON is defined in the file.
     """
     print(f"[KIO6] Received from KIO3: {request}", flush=True)
-    await send_log(f"Received data from KIO3")
+    await send_log(f"📥 Received data from KIO3", data=request)
     
     # Load the message from messages.json
     try:
         with open('messages.json', 'r') as f:
             message = json.load(f)
         print(f"[KIO6] Loaded message: {message}", flush=True)
-        await send_log(f"Validated data for patient {message.get('payload', {}).get('patient_id', 'unknown')}")
+        patient_id = message.get('payload', {}).get('patient_id', 'unknown')
+        await send_log(f"✔️ Validated data for patient {patient_id}", data=message)
     except Exception as e:
         print(f"[KIO6] Error loading messages.json: {e}", flush=True)
         await send_log(f"Error loading messages.json: {str(e)}")
@@ -66,11 +70,12 @@ async def process(request: dict):
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             print(f"[KIO6] Forwarding to KIO7...", flush=True)
-            await send_log("Forwarding to KIO7 (Drafting)...")
+            await send_log("📤 Forwarding to KIO7 (Drafting)...", data=message)
             resp = await client.post("http://kio7:8003/process", json=message)
+            response_data = resp.json()
             print(f"[KIO6] Got response from KIO7", flush=True)
-            await send_log("Received response from KIO7")
-            return resp.json()
+            await send_log("✅ Received response from KIO7", data=response_data)
+            return response_data
     except Exception as e:
         print(f"[KIO6] Error forwarding to KIO7: {e}", flush=True)
         await send_log(f"Error forwarding to KIO7: {str(e)}")

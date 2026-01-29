@@ -126,7 +126,40 @@ async def index():
             .log-entry {
                 margin-bottom: 5px;
                 border-bottom: 1px solid #444;
-                padding-bottom: 2px;
+                padding: 8px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                border-radius: 4px;
+            }
+            .log-entry:hover {
+                background: #3d3d3d;
+            }
+            .log-entry.has-data {
+                padding-left: 20px;
+                position: relative;
+            }
+            .log-entry.has-data::before {
+                content: '▶';
+                position: absolute;
+                left: 5px;
+                transition: transform 0.2s;
+            }
+            .log-entry.has-data.expanded::before {
+                transform: rotate(90deg);
+            }
+            .log-detail {
+                display: none;
+                margin-top: 10px;
+                padding: 10px;
+                background: #1a1a1a;
+                border-left: 3px solid #4CAF50;
+                border-radius: 4px;
+                font-size: 11px;
+                color: #aaa;
+                overflow-x: auto;
+            }
+            .log-detail.visible {
+                display: block;
             }
             .timestamp {
                 color: #888;
@@ -256,16 +289,34 @@ async def index():
                 
                 function addLogEntry(data) {
                     const entry = document.createElement('div');
-                    entry.className = 'log-entry';
-                    
                     const time = new Date().toLocaleTimeString();
                     const serviceClass = `tag-${data.service}`;
                     
-                    entry.innerHTML = `
+                    // Check if there's detailed data to show
+                    const hasDetailedData = data.data && typeof data.data === 'object';
+                    entry.className = hasDetailedData ? 'log-entry has-data' : 'log-entry';
+                    
+                    const logContent = document.createElement('div');
+                    logContent.innerHTML = `
                         <span class="timestamp">[${time}]</span>
                         <span class="service-tag ${serviceClass}">${data.service}</span>
                         <span>${data.message}</span>
                     `;
+                    entry.appendChild(logContent);
+                    
+                    // Add detailed data section if available
+                    if (hasDetailedData) {
+                        const detailDiv = document.createElement('div');
+                        detailDiv.className = 'log-detail';
+                        detailDiv.innerHTML = `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
+                        entry.appendChild(detailDiv);
+                        
+                        // Make it clickable
+                        entry.addEventListener('click', function() {
+                            entry.classList.toggle('expanded');
+                            detailDiv.classList.toggle('visible');
+                        });
+                    }
                     
                     liveLogs.appendChild(entry);
                     liveLogs.scrollTop = liveLogs.scrollHeight;
