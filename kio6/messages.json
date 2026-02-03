@@ -16,7 +16,7 @@
     "patient_id": "PT-99802",
     "validation_status": "PASSED",
     "structured_context": {
-      "demographics": "45yo, Non-binary",
+      "demographics": "45yo, Male",
       "clinical_summary": "Symptomatic for Respiratory Infection. WBC normal.",
       "template_requested": "Standard_Outpatient_Summary",
       "synthetic_references": "Ref_Case_554 (from KIO5)"
