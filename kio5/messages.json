@@ -1,28 +1,5 @@
 {
-  "header": {
-    "source_kio": "KIO5",
-    "destination_kio": "KIO3",
-    "timestamp": "2026-01-28T20:15:00Z",
-    "message_type": "DATA_INGESTION_TRIGGER",
-    "explanation_keys": {
-      "process_stage": "Input & Ingestion",
-      "logic_description": "Initial data pull from EHR/Master Dataset to be structured for LLM analysis.",
-      "routing_reason": "Data must be converted to formal requirements before report generation.",
-      "state_status": "PENDING_ANALYSIS",
-      "compliance_scope": "Initial PII/PHI check for GDPR and HIPAA adherence."
-    }
-  },
-  "payload": {
-    "patient_id": "PT-99802",
-    "data_source": "Synthetic Medical Data KIO5",
-    "raw_data": {
-      "demographics": { "age": 45, "gender": "Male" },
-      "clinical_notes": "Patient presents with persistent cough; suspected respiratory infection.",
-      "labs": [{ "test": "WBC", "result": "8.5" }]
-    }
-  },
-  "metadata": {
-    "security_protocol": "Role-Based Access Control (RBAC)",
-    "encryption_level": "AES-256"
-  }
+  "header": {},
+  "payload": {},
+  "metadata": {}
 }

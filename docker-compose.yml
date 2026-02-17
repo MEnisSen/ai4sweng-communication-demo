@@ -6,18 +6,14 @@ services:
     container_name: kio_ui
     ports:
       - "8080:8080"
-    depends_on:
-      - kio5
     networks:
       - kio_net
 
-  kio5:
-    build: ./kio5
-    container_name: kio5
+  kio2:
+    build: ./kio2
+    container_name: kio2
     expose:
-      - "8001"
-    depends_on:
-      - kio3
+      - "8002"
     networks:
       - kio_net
 
@@ -25,9 +21,23 @@ services:
     build: ./kio3
     container_name: kio3
     expose:
-      - "8001"
-    depends_on:
-      - kio6
+      - "8003"
+    networks:
+      - kio_net
+
+  kio4:
+    build: ./kio4
+    container_name: kio4
+    expose:
+      - "8004"
+    networks:
+      - kio_net
+
+  kio5:
+    build: ./kio5
+    container_name: kio5
+    expose:
+      - "8005"
     networks:
       - kio_net
 
@@ -35,9 +45,7 @@ services:
     build: ./kio6
     container_name: kio6
     expose:
-      - "8002"
-    depends_on:
-      - kio7
+      - "8006"
     networks:
       - kio_net
 
@@ -45,9 +53,15 @@ services:
     build: ./kio7
     container_name: kio7
     expose:
-      - "8003"
-    depends_on:
-      - kio9
+      - "8007"
+    networks:
+      - kio_net
+
+  kio8:
+    build: ./kio8
+    container_name: kio8
+    expose:
+      - "8008"
     networks:
       - kio_net
 
@@ -55,12 +69,34 @@ services:
     build: ./kio9
     container_name: kio9
     expose:
-      - "8004"
+      - "8009"
+    networks:
+      - kio_net
+
+  kio10:
+    build: ./kio10
+    container_name: kio10
+    expose:
+      - "8010"
+    networks:
+      - kio_net
+
+  kio11:
+    build: ./kio11
+    container_name: kio11
+    expose:
+      - "8011"
+    networks:
+      - kio_net
+
+  kio12:
+    build: ./kio12
+    container_name: kio12
+    expose:
+      - "8012"
     networks:
       - kio_net
 
 networks:
   kio_net:
     driver: bridge
-
-

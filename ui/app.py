@@ -4,11 +4,15 @@ Triggers the pipeline and displays results
 """
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from typing import List
+from typing import List, Dict
 import httpx
 import json
+import random
 
 app = FastAPI(title="KIO UI")
+
+# Store messages for visualization
+pipeline_messages: Dict[str, list] = {}
 
 # WebSocket Connection Manager
 class ConnectionManager:
@@ -33,78 +37,256 @@ manager = ConnectionManager()
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    """Simple web UI"""
+    """Interactive web UI with flow visualization"""
     html_content = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>KIO Pipeline Demo</title>
+        <title>KIO Pipeline Demo - Dynamic Flow Visualization</title>
         <style>
+            * {
+                box-sizing: border-box;
+            }
             body {
-                font-family: Arial, sans-serif;
-                max-width: 1000px;
-                margin: 50px auto;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
                 padding: 20px;
-                background: #f5f5f5;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
             }
             .container {
+                max-width: 1400px;
+                margin: 0 auto;
                 background: white;
                 padding: 30px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             }
             h1 {
                 color: #333;
-                border-bottom: 3px solid #4CAF50;
-                padding-bottom: 10px;
+                border-bottom: 3px solid #667eea;
+                padding-bottom: 15px;
+                margin-top: 0;
+                font-size: 32px;
             }
-            .stage {
-                display: inline-block;
-                padding: 8px 15px;
-                margin: 5px;
-                background: #e3f2fd;
-                border-radius: 20px;
-                font-size: 13px;
-                font-weight: 500;
+            .subtitle {
+                color: #666;
+                font-size: 16px;
+                margin-bottom: 20px;
             }
             button {
-                background: #4CAF50;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
                 padding: 15px 40px;
                 border: none;
-                border-radius: 4px;
+                border-radius: 8px;
                 cursor: pointer;
                 font-size: 18px;
                 font-weight: bold;
                 margin: 20px 0;
+                transition: transform 0.2s, box-shadow 0.2s;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
             }
             button:hover {
-                background: #45a049;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
             }
             button:disabled {
                 background: #cccccc;
                 cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
             }
-            #result {
-                margin-top: 20px;
-                padding: 20px;
-                background: #f9f9f9;
-                border-left: 4px solid #4CAF50;
-                white-space: pre-wrap;
+            
+            /* Flow Visualization Panel */
+            .flow-panel {
+                background: #f8f9fa;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 30px;
+                margin: 20px 0;
+                min-height: 250px;
                 display: none;
-                max-height: 600px;
-                overflow-y: auto;
-                font-family: monospace;
-                font-size: 13px;
             }
+            .flow-panel.active {
+                display: block;
+            }
+            .flow-header {
+                font-size: 18px;
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .flow-canvas {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 15px;
+                padding: 20px;
+            }
+            .kio-node {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                color: white;
+                font-size: 14px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                transition: transform 0.3s, box-shadow 0.3s;
+                cursor: pointer;
+                position: relative;
+            }
+            .kio-node:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            }
+            .kio-node.active {
+                animation: pulse 1s infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+            }
+            .flow-arrow {
+                font-size: 32px;
+                color: #667eea;
+                cursor: pointer;
+                transition: transform 0.2s, color 0.2s;
+                position: relative;
+                padding: 0 5px;
+            }
+            .flow-arrow:hover {
+                transform: scale(1.2);
+                color: #764ba2;
+            }
+            .flow-arrow.has-message {
+                color: #4CAF50;
+                font-weight: bold;
+            }
+            
+            /* Message Modal */
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                animation: fadeIn 0.3s;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            .modal.active {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .modal-content {
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s;
+            }
+            @keyframes slideIn {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .modal-header {
+                font-size: 20px;
+                font-weight: bold;
+                margin-bottom: 15px;
+                color: #333;
+                border-bottom: 2px solid #667eea;
+                padding-bottom: 10px;
+            }
+            .modal-close {
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+                color: #999;
+                cursor: pointer;
+                line-height: 20px;
+            }
+            .modal-close:hover {
+                color: #333;
+            }
+            .message-content {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            
+            /* KIO Colors */
+            .kio-color-UI { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .kio-color-2 { background: linear-gradient(135deg, #f44336 0%, #e91e63 100%); }
+            .kio-color-3 { background: linear-gradient(135deg, #e91e63 0%, #9c27b0 100%); }
+            .kio-color-4 { background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%); }
+            .kio-color-5 { background: linear-gradient(135deg, #673ab7 0%, #3f51b5 100%); }
+            .kio-color-6 { background: linear-gradient(135deg, #3f51b5 0%, #2196f3 100%); }
+            .kio-color-7 { background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%); }
+            .kio-color-8 { background: linear-gradient(135deg, #00bcd4 0%, #009688 100%); }
+            .kio-color-9 { background: linear-gradient(135deg, #009688 0%, #4caf50 100%); }
+            .kio-color-10 { background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%); }
+            .kio-color-11 { background: linear-gradient(135deg, #cddc39 0%, #ffeb3b 100%); color: #333; }
+            .kio-color-12 { background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); }
+            
+            /* Log Tags */
+            .tag-KIO2 { background: #f44336; color: white; }
+            .tag-KIO3 { background: #e91e63; color: white; }
+            .tag-KIO4 { background: #9c27b0; color: white; }
+            .tag-KIO5 { background: #673ab7; color: white; }
+            .tag-KIO6 { background: #3f51b5; color: white; }
+            .tag-KIO7 { background: #2196f3; color: white; }
+            .tag-KIO8 { background: #00bcd4; color: white; }
+            .tag-KIO9 { background: #009688; color: white; }
+            .tag-KIO10 { background: #4caf50; color: white; }
+            .tag-KIO11 { background: #cddc39; color: #333; }
+            .tag-KIO12 { background: #ff9800; color: white; }
+            .tag-UI { background: #607d8b; color: white; }
+            
+            .loading {
+                display: none;
+                color: #666;
+                font-style: italic;
+                font-size: 16px;
+                text-align: center;
+                padding: 20px;
+            }
+            .loading.active {
+                display: block;
+            }
+            
+            /* Logs Container */
             .logs-container {
                 margin-top: 20px;
             }
             .logs-header {
                 background: #333;
                 color: white;
-                padding: 10px 15px;
-                border-radius: 4px 4px 0 0;
+                padding: 12px 15px;
+                border-radius: 8px 8px 0 0;
                 font-weight: bold;
                 font-size: 14px;
             }
@@ -112,11 +294,11 @@ async def index():
                 padding: 15px;
                 background: #2d2d2d;
                 color: #00ff00;
-                border-radius: 0 0 4px 4px;
-                font-family: monospace;
+                border-radius: 0 0 8px 8px;
+                font-family: 'Courier New', monospace;
                 height: 300px;
                 overflow-y: auto;
-                min-height: 60px;
+                font-size: 13px;
             }
             #live-logs:empty::after {
                 content: 'Waiting for logs...';
@@ -167,100 +349,107 @@ async def index():
             }
             .service-tag {
                 font-weight: bold;
-                padding: 2px 6px;
-                border-radius: 3px;
+                padding: 3px 8px;
+                border-radius: 4px;
                 margin-right: 10px;
+                font-size: 12px;
             }
-            .tag-KIO5 { background: #e91e63; color: white; }
-            .tag-KIO3 { background: #9c27b0; color: white; }
-            .tag-KIO6 { background: #2196f3; color: white; }
-            .tag-KIO7 { background: #ff9800; color: white; }
-            .tag-KIO9 { background: #4caf50; color: white; }
             
-            .loading {
-                display: none;
-                color: #666;
-                font-style: italic;
+            
+            .info-box {
+                background: #e3f2fd;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+                border-left: 4px solid #2196f3;
+            }
+            
+            .input-container {
+                margin: 20px 0;
+            }
+            
+            .input-label {
+                display: block;
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 8px;
                 font-size: 16px;
             }
-            .info {
-                background: #fff3cd;
-                padding: 15px;
-                border-radius: 4px;
-                margin: 20px 0;
-                border-left: 4px solid #ffc107;
-            }
-            .flow-diagram {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin: 30px 0;
-                padding: 20px;
-                background: #f0f0f0;
+            
+            .user-input {
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #e0e0e0;
                 border-radius: 8px;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 14px;
+                resize: vertical;
+                transition: border-color 0.3s;
             }
-            .kio-box {
-                background: #fff;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                text-align: center;
-                font-weight: bold;
-                min-width: 80px;
+            
+            .user-input:focus {
+                outline: none;
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
             }
-            .arrow {
-                font-size: 24px;
-                color: #4CAF50;
+            
+            .user-input::placeholder {
+                color: #999;
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>🏥 KIO Medical Report Pipeline Demo</h1>
-            <p><strong>Pipeline Flow:</strong></p>
-            <div>
-                <span class="stage">1. KIO5 → KIO3 (Ingestion)</span>
-                <span class="stage">2. KIO3 → KIO6 (Structuring)</span>
-                <span class="stage">3. KIO6 → KIO7 (Validation)</span>
-                <span class="stage">4. KIO7 → KIO9 (Drafting)</span>
-                <span class="stage">5. KIO9 → User (Compliance)</span>
+            <h1>🔄 KIO Pipeline Demo - Dynamic Flow Visualization</h1>
+            
+            <div class="input-container">
+                <label for="userInput" class="input-label">📝 Your Message:</label>
+                <textarea id="userInput" class="user-input" placeholder="Enter your message here (e.g., 'Process patient data for analysis')..." rows="3"></textarea>
             </div>
             
-            <div class="flow-diagram">
-                <div class="kio-box">KIO5<br><small>Ingestion</small></div>
-                <div class="arrow">→</div>
-                <div class="kio-box">KIO3<br><small>Structuring</small></div>
-                <div class="arrow">→</div>
-                <div class="kio-box">KIO6<br><small>Validation</small></div>
-                <div class="arrow">→</div>
-                <div class="kio-box">KIO7<br><small>Drafting</small></div>
-                <div class="arrow">→</div>
-                <div class="kio-box">KIO9<br><small>Compliance</small></div>
+            <button id="startBtn">🎲 Generate & Start Pipeline</button>
+            
+            <div class="loading" id="loading">⏳ Processing through pipeline stages...</div>
+            
+            <!-- Flow Visualization Panel -->
+            <div class="flow-panel" id="flowPanel">
+                <div class="flow-header">
+                    <span>📊 Pipeline Flow Visualization</span>
+                </div>
+                <div class="flow-canvas" id="flowCanvas">
+                    <!-- Pipeline nodes will be added here dynamically -->
+                </div>
             </div>
             
-            <div class="info">
-                <strong>ℹ️ How it works:</strong> Click the button below to trigger the pipeline. 
-                Each KIO service will load its message from <code>messages.json</code> and forward it to the next stage.
-                <br><strong>💡 Tip:</strong> Watch the Live Logs below to see the process in real-time!
+            <!-- Message Modal -->
+            <div class="modal" id="messageModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span class="modal-close" onclick="closeModal()">&times;</span>
+                        <span id="modalTitle">Message Details</span>
+                    </div>
+                    <div class="message-content" id="messageContent">
+                        <!-- Message content will be displayed here -->
+                    </div>
+                </div>
             </div>
-            
-            <button id="startBtn">▶️ Start Pipeline Process</button>
-            
-            <div class="loading" id="loading">⏳ Processing through all 5 KIO stages...</div>
             
             <div class="logs-container">
                 <div class="logs-header">📊 Live Logs</div>
                 <div id="live-logs"></div>
             </div>
-            
-            <div id="result"></div>
         </div>
 
         <script>
+            let currentPipeline = [];
+            let pipelineMessages = {};
+            let activeKioIndex = -1;
+            
             document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM fully loaded and parsed');
                 const startBtn = document.getElementById('startBtn');
                 const liveLogs = document.getElementById('live-logs');
+                const flowPanel = document.getElementById('flowPanel');
+                const flowCanvas = document.getElementById('flowCanvas');
                 
                 // WebSocket Connection
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -274,10 +463,20 @@ async def index():
                         console.log('WebSocket connected');
                     };
                     
-                    socket.onmessage = function(event) {
-                        const data = JSON.parse(event.data);
-                        addLogEntry(data);
-                    };
+                socket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    addLogEntry(data);
+                    
+                    // Display pipeline when UI broadcasts it
+                    if (data.service === 'UI' && data.data && data.data.pipeline && data.data.pipeline.full_chain) {
+                        displayPipeline(data.data.pipeline.full_chain);
+                    }
+                    
+                    // Update flow visualization
+                    if (data.service && data.service.startsWith('KIO')) {
+                        updateFlowVisualization(data);
+                    }
+                };
                     
                     socket.onclose = function() {
                         console.log('WebSocket disconnected, retrying...');
@@ -287,12 +486,82 @@ async def index():
                 
                 connectWebSocket();
                 
+                function updateFlowVisualization(data) {
+                    // Highlight active KIO
+                    if (data.message && data.message.includes('Processing')) {
+                        const kioNum = data.service.replace('KIO', '');
+                        const kioIndex = currentPipeline.indexOf(data.service);
+                        if (kioIndex !== -1) {
+                            // Remove previous active
+                            document.querySelectorAll('.kio-node').forEach(node => {
+                                node.classList.remove('active');
+                            });
+                            // Add active to current
+                            const currentNode = document.querySelector(`[data-kio="${data.service}"]`);
+                            if (currentNode) {
+                                currentNode.classList.add('active');
+                                activeKioIndex = kioIndex;
+                            }
+                        }
+                    }
+                    
+                    // Store message data for arrows
+                    if (data.data && data.service.startsWith('KIO')) {
+                        const kioIndex = currentPipeline.indexOf(data.service);
+                        if (kioIndex !== -1 && kioIndex < currentPipeline.length - 1) {
+                            const arrowKey = `${data.service}-${currentPipeline[kioIndex + 1]}`;
+                            pipelineMessages[arrowKey] = data.data;
+                            
+                            // Mark arrow as having message
+                            const arrow = document.querySelector(`[data-arrow="${arrowKey}"]`);
+                            if (arrow) {
+                                arrow.classList.add('has-message');
+                            }
+                        }
+                    }
+                }
+                
+                function displayPipeline(pipeline) {
+                    currentPipeline = pipeline;
+                    pipelineMessages = {};
+                    activeKioIndex = -1;
+                    
+                    flowCanvas.innerHTML = '';
+                    flowPanel.classList.add('active');
+                    
+                    pipeline.forEach((kio, index) => {
+                        // Handle UI or KIO nodes
+                        const kioNum = kio === 'UI' ? 'UI' : kio.replace('KIO', '');
+                        
+                        // Create KIO node
+                        const kioNode = document.createElement('div');
+                        kioNode.className = `kio-node kio-color-${kioNum}`;
+                        kioNode.setAttribute('data-kio', kio);
+                        kioNode.textContent = kio;
+                        kioNode.title = `${kio} - Click to see details`;
+                        flowCanvas.appendChild(kioNode);
+                        
+                        // Add arrow if not last
+                        if (index < pipeline.length - 1) {
+                            const arrow = document.createElement('div');
+                            arrow.className = 'flow-arrow';
+                            arrow.textContent = '→';
+                            const arrowKey = `${kio}-${pipeline[index + 1]}`;
+                            arrow.setAttribute('data-arrow', arrowKey);
+                            arrow.title = 'Click to see message';
+                            arrow.onclick = function() {
+                                showMessage(arrowKey);
+                            };
+                            flowCanvas.appendChild(arrow);
+                        }
+                    });
+                }
+                
                 function addLogEntry(data) {
                     const entry = document.createElement('div');
                     const time = new Date().toLocaleTimeString();
                     const serviceClass = `tag-${data.service}`;
                     
-                    // Check if there's detailed data to show
                     const hasDetailedData = data.data && typeof data.data === 'object';
                     entry.className = hasDetailedData ? 'log-entry has-data' : 'log-entry';
                     
@@ -304,14 +573,12 @@ async def index():
                     `;
                     entry.appendChild(logContent);
                     
-                    // Add detailed data section if available
                     if (hasDetailedData) {
                         const detailDiv = document.createElement('div');
                         detailDiv.className = 'log-detail';
                         detailDiv.innerHTML = `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
                         entry.appendChild(detailDiv);
                         
-                        // Make it clickable
                         entry.addEventListener('click', function() {
                             entry.classList.toggle('expanded');
                             detailDiv.classList.toggle('visible');
@@ -322,51 +589,80 @@ async def index():
                     liveLogs.scrollTop = liveLogs.scrollHeight;
                 }
 
-                if (!startBtn) {
-                    console.error('Start button not found!');
-                    return;
-                }
-
                 startBtn.addEventListener('click', async function() {
-                    console.log('Start button clicked');
                     const button = document.getElementById('startBtn');
                     const loading = document.getElementById('loading');
-                    const result = document.getElementById('result');
+                    const userInput = document.getElementById('userInput');
+                    const userMessage = userInput.value.trim();
                     
-                    // Clear previous logs
+                    // Validate input
+                    if (!userMessage) {
+                        alert('Please enter a message before starting the pipeline!');
+                        userInput.focus();
+                        return;
+                    }
+                    
+                    // Clear previous state
                     liveLogs.innerHTML = '';
+                    flowPanel.classList.remove('active');
                     
                     button.disabled = true;
-                    loading.style.display = 'block';
-                    result.style.display = 'none';
+                    loading.classList.add('active');
                     
                     try {
-                        console.log('Sending request to /start');
                         const response = await fetch('/start', {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'}
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ user_prompt: userMessage })
                         });
-                        
-                        console.log('Response status:', response.status);
                         
                         if (!response.ok) {
                             throw new Error('HTTP ' + response.status + ': ' + response.statusText);
                         }
                         
                         const data = await response.json();
-                        console.log('Response data:', data);
-                        result.textContent = '✅ Pipeline Complete!\\n\\n' + JSON.stringify(data, null, 2);
-                        result.style.display = 'block';
+                        console.log('Pipeline completed:', data);
+                        
                     } catch (error) {
                         console.error('Error:', error);
-                        result.textContent = '❌ Error: ' + error.message;
-                        result.style.display = 'block';
+                        alert('❌ Pipeline Error: ' + error.message);
                     } finally {
-                        loading.style.display = 'none';
+                        loading.classList.remove('active');
                         button.disabled = false;
                     }
                 });
             });
+            
+            function showMessage(arrowKey) {
+                const message = pipelineMessages[arrowKey];
+                const modal = document.getElementById('messageModal');
+                const modalTitle = document.getElementById('modalTitle');
+                const messageContent = document.getElementById('messageContent');
+                
+                if (message) {
+                    const [fromKio, toKio] = arrowKey.split('-');
+                    modalTitle.textContent = `Message: ${fromKio} → ${toKio}`;
+                    messageContent.textContent = JSON.stringify(message, null, 2);
+                    modal.classList.add('active');
+                } else {
+                    modalTitle.textContent = 'No Message Data';
+                    messageContent.textContent = 'No message data captured for this connection yet.';
+                    modal.classList.add('active');
+                }
+            }
+            
+            function closeModal() {
+                const modal = document.getElementById('messageModal');
+                modal.classList.remove('active');
+            }
+            
+            // Close modal when clicking outside
+            window.onclick = function(event) {
+                const modal = document.getElementById('messageModal');
+                if (event.target === modal) {
+                    modal.classList.remove('active');
+                }
+            }
         </script>
     </body>
     </html>
@@ -395,32 +691,87 @@ async def receive_log(log_data: dict):
     return {"status": "ok"}
 
 @app.post("/start")
-async def start():
+async def start(request: dict = None):
     """
-    Trigger the KIO pipeline starting with KIO5.
-    No input needed - each KIO loads its own message from messages.json
+    Generate a random pipeline and execute it.
+    UI is always the first KIO, followed by 2-7 random KIOs from KIO2-KIO12.
     """
+    global pipeline_messages
+    pipeline_messages = {}
+    
+    # Get user prompt from request
+    if request is None:
+        request = {}
+    user_prompt = request.get("user_prompt", "")
+    
+    # Generate random pipeline: pick 2-7 KIOs from KIO2-KIO12
+    all_kios = list(range(2, 13))  # [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    pipeline_length = random.randint(2, 7)
+    selected_kios = random.sample(all_kios, pipeline_length)
+    selected_kios.sort()  # Keep them in order for logical flow
+    
+    # UI is always first
+    pipeline = ["UI"] + [f"KIO{k}" for k in selected_kios]
+    
     print(f"\n{'='*60}", flush=True)
-    print(f"[UI] 🚀 Starting KIO Pipeline Process", flush=True)
+    print(f"[UI] 🎲 Generated random pipeline: {' → '.join(pipeline)}", flush=True)
     print(f"{'='*60}\n", flush=True)
     
-    # Broadcast start log
+    # Broadcast pipeline generation with pipeline data
     await manager.broadcast({
         "service": "UI",
-        "message": "🚀 Starting KIO Pipeline Process..."
+        "message": f"🎲 Generated pipeline: {' → '.join(pipeline)}",
+        "data": {
+            "pipeline": {
+                "full_chain": pipeline
+            }
+        }
+    })
+    
+    # Create initial message with pipeline config and user prompt
+    initial_message = {
+        "pipeline": {
+            "full_chain": pipeline,
+            "current_index": 0,  # UI is at index 0
+            "total_stages": len(pipeline)
+        },
+        "user_prompt": user_prompt,
+        "header": {
+            "source_kio": "UI"
+        },
+        "payload": {},
+        "metadata": {}
+    }
+    
+    # UI processes first, then forwards to first actual KIO
+    # Skip UI (index 0) and start with first KIO (index 1)
+    first_kio = pipeline[1].lower()  # e.g., "kio2"
+    first_kio_num = selected_kios[0]
+    port = 8000 + first_kio_num  # KIO2 = 8002, KIO3 = 8003, etc.
+    
+    # Update to reflect UI has processed and forwarding to first KIO
+    initial_message["pipeline"]["current_index"] = 1
+    initial_message["header"]["destination_kio"] = pipeline[1]
+    
+    # Broadcast that UI is processing
+    await manager.broadcast({
+        "service": "UI",
+        "message": f"📥 Processing (stage 1/{len(pipeline)})",
+        "data": {"user_prompt": user_prompt}
     })
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            print(f"[UI] → Sending trigger to KIO5 at http://kio5:8001/process", flush=True)
+            print(f"[UI] → Forwarding to {pipeline[1]} at http://{first_kio}:{port}/process", flush=True)
             await manager.broadcast({
                 "service": "UI",
-                "message": "Triggering KIO5 (Ingestion)..."
+                "message": f"📤 Forwarding to {pipeline[1]}...",
+                "data": initial_message
             })
             
             response = await client.post(
-                "http://kio5:8001/process",
-                json={"trigger": "start"}
+                f"http://{first_kio}:{port}/process",
+                json=initial_message
             )
             print(f"[UI] ← Received response status: {response.status_code}", flush=True)
             result = response.json()
@@ -430,7 +781,8 @@ async def start():
             
             await manager.broadcast({
                 "service": "UI",
-                "message": "✅ Pipeline completed successfully!"
+                "message": "✅ Pipeline completed successfully!",
+                "data": {"pipeline": pipeline}
             })
             
             return result
@@ -453,4 +805,3 @@ async def start():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
-

@@ -1,28 +1,5 @@
 {
-  "header": {
-    "source_kio": "KIO7",
-    "destination_kio": "KIO9",
-    "timestamp": "2026-01-28T20:15:45Z",
-    "message_type": "DRAFT_REPORT_SUBMISSION",
-    "explanation_keys": {
-      "process_stage": "Draft Generation",
-      "logic_description": "LLM generated narrative based on validated inputs.",
-      "routing_reason": "Draft must pass automated legal/ethics audit before user viewing.",
-      "state_status": "DRAFT_PENDING_APPROVAL",
-      "model_used": "GPT-4-Med-Tuned"
-    }
-  },
-  "payload": {
-    "patient_id": "PT-99802",
-    "draft_content": {
-      "title": "Medical Summary Report",
-      "body_text": "Patient is a 45-year-old presenting with persistent cough... Labs indicate WBC count of 8.5, within normal limits...",
-      "recommendations": "Monitor symptoms; follow up in 5 days if condition worsens."
-    },
-    "generated_tokens": 340
-  },
-  "metadata": {
-    "ai_watermark": "true",
-    "hallucination_check_required": "true"
-  }
+  "header": {},
+  "payload": {},
+  "metadata": {}
 }

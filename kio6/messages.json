@@ -1,29 +1,5 @@
 {
-  "header": {
-    "source_kio": "KIO6",
-    "destination_kio": "KIO7",
-    "timestamp": "2026-01-28T20:15:08Z",
-    "message_type": "VALIDATED_DATA_PACKET",
-    "explanation_keys": {
-      "process_stage": "Data Validation",
-      "logic_description": "Data cross-referenced with Master Dataset; gaps resolved or accepted.",
-      "routing_reason": "Data integrity confirmed; ready for LLM synthesis.",
-      "state_status": "READY_FOR_GENERATION",
-      "compliance_scope": "Data Minimization applied (irrelevant history removed)."
-    }
-  },
-  "payload": {
-    "patient_id": "PT-99802",
-    "validation_status": "PASSED",
-    "structured_context": {
-      "demographics": "45yo, Male",
-      "clinical_summary": "Symptomatic for Respiratory Infection. WBC normal.",
-      "template_requested": "Standard_Outpatient_Summary",
-      "synthetic_references": "Ref_Case_554 (from KIO5)"
-    }
-  },
-  "metadata": {
-    "validation_ruleset": "Standard_Clinical_v2",
-    "trace_id": "val-778-990"
-  }
+  "header": {},
+  "payload": {},
+  "metadata": {}
 }

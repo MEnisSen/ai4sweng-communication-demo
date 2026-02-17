@@ -1,5 +1,5 @@
 """
-KIO3 Service - Dynamically routes based on pipeline config
+KIO11 Service - Dynamically routes based on pipeline config
 """
 import json
 import asyncio
@@ -7,8 +7,8 @@ from fastapi import FastAPI, HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
-KIO_NAME = "KIO3"
-KIO_PORT = 8003
+KIO_NAME = "KIO11"
+KIO_PORT = 8011
 
 app = FastAPI(title=KIO_NAME)
 
